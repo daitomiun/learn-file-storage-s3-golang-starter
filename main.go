@@ -36,8 +36,6 @@ func main() {
 		log.Fatal("Could not load aws configuration")
 	}
 
-	client := 
-
 	pathToDB := os.Getenv("DB_PATH")
 	if pathToDB == "" {
 		log.Fatal("DB_URL must be set")
@@ -98,7 +96,7 @@ func main() {
 		s3Region:         s3Region,
 		s3CfDistribution: s3CfDistribution,
 		port:             port,
-		s3Client: s3.NewFromConfig(awsConfig),
+		s3Client:         s3.NewFromConfig(awsConfig),
 	}
 
 	err = cfg.ensureAssetsDir()
