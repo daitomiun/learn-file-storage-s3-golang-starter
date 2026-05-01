@@ -69,7 +69,13 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 
 	tmpFile.Seek(0, io.SeekStart)
 
-	assetFilePath := getAssetPath(mediaType)
+	aspectRatio, err := getVideoAspectRatio(tmpFile.Name())
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Could not process the request", err)
+		return
+	}
+
+	assetFilePath := fmt.Sprintf("%s/%s", aspectRatio, getAssetPath(mediaType))
 
 	_, err = cfg.s3Client.PutObject(
 		context.Background(),

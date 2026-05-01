@@ -1,19 +1,14 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
-
-	"golang.org/x/text/width"
 )
 
 func (cfg apiConfig) ensureAssetsDir() error {
@@ -57,7 +52,6 @@ func getVideoAspectRatio(filepath string) (string, error) {
 	}
 	width := body.Streams[0].Width
 	height := body.Streams[0].Height
-
 	aspectRatio := calculateAspectRatio(width, height)
 
 	return aspectRatio, nil
@@ -65,13 +59,17 @@ func getVideoAspectRatio(filepath string) (string, error) {
 
 func calculateAspectRatio(width, heigth int) string {
 	gcf := greatestCommonFactor(width, heigth)
-	fmt.Printf("ratio -> %d:%d \n", width/gcf, heigth/gcf)
 	ratio := fmt.Sprintf("%d:%d \n", width/gcf, heigth/gcf)
-	if ratio != "16:9" || ratio != "9:16" {
+	fmt.Println(ratio)
+
+	switch ratio {
+	case "16:9":
+		return "landscape"
+	case "9:16":
+		return "portrait"
+	default:
 		return "other"
 	}
-	return ratio
-
 }
 
 func greatestCommonFactor(a, b int) int {
