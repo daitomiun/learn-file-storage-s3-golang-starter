@@ -74,29 +74,13 @@ func calculateAspectRatio(width, heigth int) string {
 
 }
 
-func greatestCommonFactor(numA, numB int) int {
-	var factorsA []int
-	var factorsB []int
-	for i := 1; i <= numA; i++ {
-		if numA%i == 0 {
-			factorsA = append(factorsA, i)
-		}
+func greatestCommonFactor(a, b int) int {
+	for b != 0 {
+		t := b
+		b = a % b
+		a = t
 	}
-	for i := 1; i <= numB; i++ {
-		if numB%i == 0 {
-			factorsB = append(factorsB, i)
-		}
-	}
-
-	var commonFactor []int
-	for _, B := range factorsB {
-		for _, A := range factorsA {
-			if A == B {
-				commonFactor = append(commonFactor, A)
-			}
-		}
-	}
-	return commonFactor[len(commonFactor)-1]
+	return a
 }
 
 type body struct {
