@@ -25,6 +25,7 @@ type apiConfig struct {
 	s3CfDistribution string
 	port             string
 	s3Client         *s3.Client
+	cdnDomain        string
 }
 
 func main() {
