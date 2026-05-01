@@ -11,76 +11,6 @@ import (
 	"strings"
 )
 
-func (cfg apiConfig) ensureAssetsDir() error {
-	if _, err := os.Stat(cfg.assetsRoot); os.IsNotExist(err) {
-		return os.Mkdir(cfg.assetsRoot, 0755)
-	}
-	return nil
-}
-
-func getAssetPath(mediaType string) string {
-	randBytes := make([]byte, 32)
-	_, err := rand.Read(randBytes)
-	if err != nil {
-		panic("failed to generate random bytes")
-	}
-	ext := mediaTypeToExt(mediaType)
-	id := base64.RawURLEncoding.EncodeToString(randBytes)
-
-	return fmt.Sprintf("%s%s", id, ext)
-}
-
-func mediaTypeToExt(mediaType string) string {
-	parts := strings.Split(mediaType, "/")
-	if len(parts) != 2 {
-		return ".bin"
-	}
-	return "." + parts[1]
-}
-
-func getVideoAspectRatio(filepath string) (string, error) {
-	cmd := exec.Command("ffprobe", "-v", "error", "-print_format", "json", "-show_streams", filepath)
-
-	var jsonData bytes.Buffer
-	cmd.Stdout = &jsonData
-	cmd.Run()
-
-	var body body
-
-	if err := json.Unmarshal(jsonData.Bytes(), &body); err != nil {
-		return "", err
-	}
-	width := body.Streams[0].Width
-	height := body.Streams[0].Height
-	aspectRatio := calculateAspectRatio(width, height)
-
-	return aspectRatio, nil
-}
-
-func calculateAspectRatio(width, heigth int) string {
-	gcf := greatestCommonFactor(width, heigth)
-	ratio := fmt.Sprintf("%d:%d \n", width/gcf, heigth/gcf)
-	fmt.Println(ratio)
-
-	switch ratio {
-	case "16:9":
-		return "landscape"
-	case "9:16":
-		return "portrait"
-	default:
-		return "other"
-	}
-}
-
-func greatestCommonFactor(a, b int) int {
-	for b != 0 {
-		t := b
-		b = a % b
-		a = t
-	}
-	return a
-}
-
 type body struct {
 	Streams []struct {
 		Index              int    `json:"index"`
@@ -145,7 +75,7 @@ type body struct {
 			VendorID    string `json:"vendor_id"`
 			Encoder     string `json:"encoder"`
 			Timecode    string `json:"timecode"`
-		} `json:"tags,omitempty"`
+		} `json:"tags"`
 		SampleFmt      string `json:"sample_fmt,omitempty"`
 		SampleRate     string `json:"sample_rate,omitempty"`
 		Channels       int    `json:"channels,omitempty"`
@@ -153,4 +83,71 @@ type body struct {
 		BitsPerSample  int    `json:"bits_per_sample,omitempty"`
 		InitialPadding int    `json:"initial_padding,omitempty"`
 	} `json:"streams"`
+}
+
+func (cfg apiConfig) ensureAssetsDir() error {
+	if _, err := os.Stat(cfg.assetsRoot); os.IsNotExist(err) {
+		return os.Mkdir(cfg.assetsRoot, 0755)
+	}
+	return nil
+}
+
+func getAssetPath(mediaType string) string {
+	randBytes := make([]byte, 32)
+	_, err := rand.Read(randBytes)
+	if err != nil {
+		panic("failed to generate random bytes")
+	}
+	ext := mediaTypeToExt(mediaType)
+	id := base64.RawURLEncoding.EncodeToString(randBytes)
+
+	return fmt.Sprintf("%s%s", id, ext)
+}
+
+func mediaTypeToExt(mediaType string) string {
+	parts := strings.Split(mediaType, "/")
+	if len(parts) != 2 {
+		return ".bin"
+	}
+	return "." + parts[1]
+}
+
+func getVideoAspectRatio(filepath string) (string, error) {
+	cmd := exec.Command("ffprobe", "-v", "error", "-print_format", "json", "-show_streams", filepath)
+
+	var jsonData bytes.Buffer
+	cmd.Stdout = &jsonData
+	cmd.Run()
+
+	var body body
+
+	if err := json.Unmarshal(jsonData.Bytes(), &body); err != nil {
+		return "", err
+	}
+	width := body.Streams[0].Width
+	height := body.Streams[0].Height
+	aspectRatio := calculateAspectRatio(width, height)
+
+	return aspectRatio, nil
+}
+
+func calculateAspectRatio(width, heigth int) string {
+	if width > heigth {
+		return "landscape"
+	}
+	if width < heigth {
+		return "portrait"
+	}
+	return "other"
+}
+
+func processVideoForFastStart(filePath string) (string, error) {
+	outputFilePath := fmt.Sprintf("%s.processing", filePath)
+	cmd := exec.Command("ffmpeg", "-i", filePath, "-c", "copy", "-movflags", "faststart", "-f", "mp4", outputFilePath)
+
+	err := cmd.Run()
+	if err != nil {
+		return "", err
+	}
+	return outputFilePath, nil
 }
