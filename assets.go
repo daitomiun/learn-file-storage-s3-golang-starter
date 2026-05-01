@@ -58,7 +58,45 @@ func getVideoAspectRatio(filepath string) (string, error) {
 	width := body.Streams[0].Width
 	height := body.Streams[0].Height
 
-	return "", nil
+	aspectRatio := calculateAspectRatio(width, height)
+
+	return aspectRatio, nil
+}
+
+func calculateAspectRatio(width, heigth int) string {
+	gcf := greatestCommonFactor(width, heigth)
+	fmt.Printf("ratio -> %d:%d \n", width/gcf, heigth/gcf)
+	ratio := fmt.Sprintf("%d:%d \n", width/gcf, heigth/gcf)
+	if ratio != "16:9" || ratio != "9:16" {
+		return "other"
+	}
+	return ratio
+
+}
+
+func greatestCommonFactor(numA, numB int) int {
+	var factorsA []int
+	var factorsB []int
+	for i := 1; i <= numA; i++ {
+		if numA%i == 0 {
+			factorsA = append(factorsA, i)
+		}
+	}
+	for i := 1; i <= numB; i++ {
+		if numB%i == 0 {
+			factorsB = append(factorsB, i)
+		}
+	}
+
+	var commonFactor []int
+	for _, B := range factorsB {
+		for _, A := range factorsA {
+			if A == B {
+				commonFactor = append(commonFactor, A)
+			}
+		}
+	}
+	return commonFactor[len(commonFactor)-1]
 }
 
 type body struct {
@@ -132,15 +170,5 @@ type body struct {
 		ChannelLayout  string `json:"channel_layout,omitempty"`
 		BitsPerSample  int    `json:"bits_per_sample,omitempty"`
 		InitialPadding int    `json:"initial_padding,omitempty"`
-		Tags0          struct {
-			Language    string `json:"language"`
-			HandlerName string `json:"handler_name"`
-			VendorID    string `json:"vendor_id"`
-		} `json:"tags,omitempty"`
-		Tags1 struct {
-			Language    string `json:"language"`
-			HandlerName string `json:"handler_name"`
-			Timecode    string `json:"timecode"`
-		} `json:"tags,omitempty"`
 	} `json:"streams"`
 }
