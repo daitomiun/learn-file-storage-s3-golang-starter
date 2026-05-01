@@ -47,7 +47,6 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 	defer file.Close()
 
 	contentType := header.Header.Get("Content-Type")
-	fmt.Println(contentType)
 
 	video, err := cfg.db.GetVideo(videoID)
 	if video.UserID != userID {
@@ -71,7 +70,6 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 
 	updatedVideo := video
 	url := fmt.Sprintf("http://localhost:%s/%s", cfg.port, assetFilePath)
-	fmt.Println(url)
 	updatedVideo.ThumbnailURL = &url
 
 	cfg.db.UpdateVideo(updatedVideo)

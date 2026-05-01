@@ -2,14 +2,18 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"mime"
 	"net/http"
 	"os"
+	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/bootdotdev/learn-file-storage-s3-golang-starter/internal/auth"
+	"github.com/bootdotdev/learn-file-storage-s3-golang-starter/internal/database"
 	"github.com/google/uuid"
 )
 
@@ -106,8 +110,56 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 	}
 	updatedVideo := video
 
-	url := fmt.Sprintf("http://%s.s3.%s.amazonaws.com/%s", cfg.s3Bucket, cfg.s3Region, assetFilePath)
+	url := fmt.Sprintf("%s,%s", cfg.s3Bucket, assetFilePath)
+	fmt.Printf("current url -> %s \n", url)
 
 	updatedVideo.VideoURL = &url
 	cfg.db.UpdateVideo(updatedVideo)
+
+	signedVideo, err := cfg.dbVideoToSignedVideo(updatedVideo)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Could not process the request", err)
+		return
+	}
+	respondWithJSON(w, http.StatusOK, signedVideo)
+}
+
+func generatePresignedURL(s3Client *s3.Client, bucket, key string, expireTime time.Duration) (string, error) {
+	newClient := s3.NewPresignClient(s3Client)
+	req, err := newClient.PresignGetObject(
+		context.Background(),
+		&s3.GetObjectInput{Bucket: &bucket, Key: &key},
+		s3.WithPresignExpires(expireTime),
+	)
+	if err != nil {
+		return "", err
+	}
+	return req.URL, nil
+}
+
+func (cfg *apiConfig) dbVideoToSignedVideo(video database.Video) (database.Video, error) {
+	if video.VideoURL == nil {
+		// NOTE: if the value is old or hasn't updated, leave it as is and return
+		return video, nil
+	}
+	params := strings.Split(*video.VideoURL, ",")
+	if len(params) < 2 {
+		return database.Video{}, errors.New("Invalid Params")
+	}
+	bucket, key := params[0], params[1]
+
+	duration, err := time.ParseDuration("1h")
+	if err != nil {
+		return database.Video{}, err
+	}
+
+	url, err := generatePresignedURL(cfg.s3Client, bucket, key, duration)
+
+	if err != nil {
+		return database.Video{}, err
+	}
+	updatedVideo := video
+	updatedVideo.VideoURL = &url
+
+	return updatedVideo, nil
 }
